@@ -15,39 +15,41 @@ jobs:
 
       - name: 📥 Tải nguồn Kernel Xiaomi
         run: |
-          # Clone nguồn Xiaomi 15 (shennong)
-          git clone --depth=1 --branch shennong-qcom-android15-6.6 https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git kernel
+          git clone --depth=1 --single-branch https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git kernel
           cd kernel
-          echo "✅ Nguồn kernel đã tải"
+          echo "✅ Nguồn đã tải thành công!"
+          ls -la
 
       - name: 🧠 Tích hợp KernelSU Next
         run: |
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
-          echo "✅ KernelSU Next đã tích hợp"
+          echo "✅ KernelSU Next đã thêm"
 
       - name: 🔒 Tích hợp SUSFS
         run: |
           cd kernel
-          git clone https://github.com/SUSFS/susfs.git susfs
-          # Sao chép file SUSFS vào đúng vị trí
-          cp -r susfs/Documentation/* Documentation/ 2>/dev/null || true
-          echo "✅ SUSFS đã thêm vào"
+          git clone --depth=1 https://github.com/SUSFS/susfs.git susfs
+          echo "✅ SUSFS đã thêm"
 
-      - name: ⚙️ Cấu hình Kernel
+      - name: 🔍 Tìm file cấu hình
+        id: findconfig
         run: |
           cd kernel
-          # Sử dụng defconfig cho Xiaomi 15
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- shennong_qcom_defconfig
-          # Bật KernelSU Next + SUSFS
+          echo "=== Tìm file cấu hình ==="
+          find arch/arm64/configs/ -name "*shennong*" -o -name "*xiaomi15*" -o -name "*qcom*" | head -10
+
+      - name: ⚙: Chọn cấu hình chung nếu không tìm thấy
+        run: |
+          cd kernel
+          # Dùng cấu hình Qualcom chung cho Xiaomi
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+          # Bật KernelSU + SUSFS
           echo "CONFIG_KSU=y" >> .config
           echo "CONFIG_KSU_SUSFS=y" >> .config
           echo "CONFIG_SUSFS=y" >> .config
           echo "CONFIG_SUSFS_DEBUG=n" >> .config
           echo "CONFIG_SUSFS_HIDE_KSU=y" >> .config
-          # Lưu lại cấu hình
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- savedefconfig
-          cp defconfig arch/arm64/configs/shennong_qcom_defconfig
 
       - name: 🔨 Build Kernel
         run: |
@@ -57,12 +59,12 @@ jobs:
       - name: 📦 Đóng gói kết quả
         run: |
           cd kernel/arch/arm64/boot
-          zip -r ../../kernel-ksusfs-result.zip Image
+          ls -lh
+          zip -r ../../kernel-ksusfs-result.zip Image 2>/dev/null || true
           cd ../..
-          echo "✅ File đã đóng gói xong"
-          ls -lh arch/arm64/boot/Image
+          echo "✅ Xong!"
 
-      - name: 📤 Tải lên kết quả
+      - name: 📤 Tải kết quả
         uses: actions/upload-artifact@v4
         with:
           name: KernelSU-Next-SUSFS
