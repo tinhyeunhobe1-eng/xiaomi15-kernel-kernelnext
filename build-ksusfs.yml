@@ -15,60 +15,36 @@ jobs:
 
       - name: 📥 Tải nguồn Kernel Xiaomi
         run: |
-          git clone --depth=1 --single-branch https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git kernel
+          git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git kernel
           cd kernel
-          echo "✅ Nguồn đã tải thành công!"
-          ls -la
+          echo "✅ Tải xong!"
 
       - name: 🧠 Tích hợp KernelSU Next
         run: |
           cd kernel
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
-          echo "✅ KernelSU Next đã thêm"
 
       - name: 🔒 Tích hợp SUSFS
         run: |
           cd kernel
-          git clone --depth=1 https://github.com/SUSFS/susfs.git susfs
-          echo "✅ SUSFS đã thêm"
+          git clone https://github.com/SUSFS/susfs.git susfs || true
 
-      - name: 🔍 Tìm file cấu hình
-        id: findconfig
+      - name: ⚙️ Cấu hình
         run: |
           cd kernel
-          echo "=== Tìm file cấu hình ==="
-          find arch/arm64/configs/ -name "*shennong*" -o -name "*xiaomi15*" -o -name "*qcom*" | head -10
-
-      - name: ⚙: Chọn cấu hình chung nếu không tìm thấy
-        run: |
-          cd kernel
-          # Dùng cấu hình Qualcom chung cho Xiaomi
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
-          # Bật KernelSU + SUSFS
           echo "CONFIG_KSU=y" >> .config
           echo "CONFIG_KSU_SUSFS=y" >> .config
           echo "CONFIG_SUSFS=y" >> .config
-          echo "CONFIG_SUSFS_DEBUG=n" >> .config
-          echo "CONFIG_SUSFS_HIDE_KSU=y" >> .config
 
-      - name: 🔨 Build Kernel
+      - name: 🔨 Build
         run: |
           cd kernel
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc)
 
-      - name: 📦 Đóng gói kết quả
-        run: |
-          cd kernel/arch/arm64/boot
-          ls -lh
-          zip -r ../../kernel-ksusfs-result.zip Image 2>/dev/null || true
-          cd ../..
-          echo "✅ Xong!"
-
-      - name: 📤 Tải kết quả
+      - name: 📤 Lưu kết quả
         uses: actions/upload-artifact@v4
         with:
-          name: KernelSU-Next-SUSFS
-          path: |
-            kernel/arch/arm64/boot/Image
-            kernel/arch/arm64/boot/Image.gz
-          retention-days: 60
+          name: Kernel-Output
+          path: kernel/arch/arm64/boot/Image
+          retention-days: 30
